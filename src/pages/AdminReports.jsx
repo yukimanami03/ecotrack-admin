@@ -89,7 +89,9 @@ export default function AdminReports({ setCurrentPage }) {
   const initiateDelete = (report) => setReportToDelete(report);
 
   const filteredReports = reports.filter((r) => {
-    const matchesSearch = r.full_name.toLowerCase().includes(searchTerm.toLowerCase()) || r.issue_type.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch =
+      r.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      r.issue_type.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = filterStatus === "All" || r.status === filterStatus;
     return matchesSearch && matchesStatus;
   });
@@ -167,11 +169,11 @@ export default function AdminReports({ setCurrentPage }) {
                   <td>{report.created_at ? new Date(report.created_at).toLocaleDateString() : "N/A"}</td>
                   <td>{report.status}</td>
                   <td style={{ textAlign: "right" }}>
-                    <div ref={activeActionId === report.id ? dropdownRef : null}>
+                    <div ref={dropdownRef} className="action-wrapper">
                       <button onClick={() => toggleActionMenu(report.id)}><MoreVertical size={18} /></button>
                       {activeActionId === report.id && (
-                        <div className="action-menu">
-                          <button onClick={() => alert("View report details")}>View</button>
+                        <div className="action-menu" onClick={(e) => e.stopPropagation()}>
+                          <button onClick={() => alert(`View details of report #${report.id}`)}>View</button>
                           <button onClick={() => initiateDelete(report)}>Delete</button>
                         </div>
                       )}
