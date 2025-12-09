@@ -8,36 +8,33 @@ export default function Topbar({ setCurrentPage }) {
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
+  const API = import.meta.env.VITE_API_URL || "https://ecotrack-backend-n5pv.onrender.com";
+
   const [readIds, setReadIds] = useState(() => {
     const savedIds = localStorage.getItem("readNotificationIds");
     return savedIds ? JSON.parse(savedIds) : [];
   });
 
   const [notifCount, setNotifCount] = useState(0);
-  
   const [newUsers, setNewUsers] = useState([]);
   const [newReports, setNewReports] = useState([]);
-
   const navigate = useNavigate();
-
-  // Use environment variable for backend URL
-  const API_URL = import.meta.env.VITE_API_URL;
 
   const fetchNewUsers = async () => {
     try {
-      const res = await axios.get(`${API_URL}/api/admin/new-users`);
+      const res = await axios.get(`${API}/api/admin/new-users`);
       setNewUsers(res.data);
     } catch (err) {
-      console.error(err);
+      console.error("Fetch users failed:", err);
     }
   };
 
   const fetchNewReports = async () => {
     try {
-      const res = await axios.get(`${API_URL}/api/admin/new-reports`);
+      const res = await axios.get(`${API}/api/admin/new-reports`);
       setNewReports(res.data);
     } catch (err) {
-      console.error(err);
+      console.error("Fetch reports failed:", err);
     }
   };
 
@@ -56,7 +53,7 @@ export default function Topbar({ setCurrentPage }) {
     setNotifCount(unreadUsers + unreadReports);
   }, [newUsers, newReports, readIds]);
 
-  const toggleNotif = async () => {
+  const toggleNotif = () => {
     setIsNotifOpen(!isNotifOpen);
     setIsProfileOpen(false);
   };
@@ -68,13 +65,10 @@ export default function Topbar({ setCurrentPage }) {
 
   const handleNotificationClick = (path, pageName, uniqueId) => {
     if (!readIds.includes(uniqueId)) {
-      setReadIds((prev) => [...prev, uniqueId]);
+      setReadIds(prev => [...prev, uniqueId]);
     }
-
     navigate(path);
-    if (setCurrentPage) {
-      setCurrentPage(pageName);
-    }
+    if (setCurrentPage) setCurrentPage(pageName);
     setIsNotifOpen(false);
   };
 
@@ -95,7 +89,6 @@ export default function Topbar({ setCurrentPage }) {
         <div className="action-wrapper">
           <button className="notification-button" onClick={toggleNotif}>
             <Bell size={28} strokeWidth={2} />
-            
             {notifCount > 0 && (
               <span className="notification-badge">
                 {notifCount > 9 ? "9+" : notifCount}
@@ -112,13 +105,12 @@ export default function Topbar({ setCurrentPage }) {
               ) : (
                 <>
                   {newUsers.map((u) => {
-                    const uniqueId = `user-${u.id}`;
+                    const uid = `user-${u.id}`;
                     return (
-                      <div 
-                        className={`dropdown-item ${isUnread(uniqueId) ? "unread-item" : ""}`}
-                        key={uniqueId}
-                        onClick={() => handleNotificationClick('/users', 'Users', uniqueId)}
-                        style={{ cursor: 'pointer' }}
+                      <div
+                        className={`dropdown-item ${isUnread(uid) ? "unread-item" : ""}`}
+                        key={uid}
+                        onClick={() => handleNotificationClick("/users", "Users", uid)}
                       >
                         <div className="notif-icon bg-green-100">
                           <User size={18} color="#16a34a" />
@@ -128,19 +120,18 @@ export default function Topbar({ setCurrentPage }) {
                           <p className="notif-desc">{u.email}</p>
                           <span className="notif-time">New today</span>
                         </div>
-                        {isUnread(uniqueId) && <div className="unread-dot"></div>}
+                        {isUnread(uid) && <div className="unread-dot"></div>}
                       </div>
                     );
                   })}
 
                   {newReports.map((r) => {
-                    const uniqueId = `report-${r.id}`;
+                    const rid = `report-${r.id}`;
                     return (
-                      <div 
-                        className={`dropdown-item ${isUnread(uniqueId) ? "unread-item" : ""}`}
-                        key={uniqueId}
-                        onClick={() => handleNotificationClick('/reports', 'Reports', uniqueId)}
-                        style={{ cursor: 'pointer' }}
+                      <div
+                        className={`dropdown-item ${isUnread(rid) ? "unread-item" : ""}`}
+                        key={rid}
+                        onClick={() => handleNotificationClick("/reports", "Reports", rid)}
                       >
                         <div className="notif-icon bg-blue-100">
                           <FileText size={18} color="#2563eb" />
@@ -150,7 +141,7 @@ export default function Topbar({ setCurrentPage }) {
                           <p className="notif-desc">{r.description}</p>
                           <span className="notif-time">Just now</span>
                         </div>
-                        {isUnread(uniqueId) && <div className="unread-dot"></div>}
+                        {isUnread(rid) && <div className="unread-dot"></div>}
                       </div>
                     );
                   })}

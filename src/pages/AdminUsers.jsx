@@ -3,15 +3,16 @@ import { useEffect, useState, useRef } from "react";
 import { MoreVertical, Search, Filter, Mail, Trash2, Loader2, X } from "lucide-react";
 
 export default function AdminUsers({ setCurrentPage }) {
-  const API_URL = import.meta.env.VITE_API_URL; // <-- environment variable
+  const API = import.meta.env.VITE_API_URL || "http://localhost:3000";
+  const token = localStorage.getItem("token") || "";
 
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
-  const [roleFilter, setRoleFilter] = useState("All");   
-  const [statusFilter, setStatusFilter] = useState("All"); 
-  const [showFilterMenu, setShowFilterMenu] = useState(false); 
+  const [roleFilter, setRoleFilter] = useState("All");
+  const [statusFilter, setStatusFilter] = useState("All");
+  const [showFilterMenu, setShowFilterMenu] = useState(false);
   const [activeActionId, setActiveActionId] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [userToDelete, setUserToDelete] = useState(null);
@@ -20,29 +21,29 @@ export default function AdminUsers({ setCurrentPage }) {
   const dropdownRef = useRef(null);
   const filterRef = useRef(null);
 
+  // Set current page title
   useEffect(() => {
     if (setCurrentPage) setCurrentPage("Users");
   }, [setCurrentPage]);
 
-  // ------------------------------
   // Fetch users
-  // ------------------------------
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const res = await fetch(`${API_URL}/api/admin/users`);
+        const res = await fetch(`${API}/api/admin/users`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
         if (!res.ok) throw new Error("Failed to fetch users");
         const data = await res.json();
 
         const formattedUsers = data.map((user) => {
-          let statusLabel = "Inactive";
-          if (user.status) {
-            statusLabel = user.status.charAt(0).toUpperCase() + user.status.slice(1).toLowerCase();
-          } else if (user.isActive !== undefined) {
-            statusLabel = user.isActive ? "Active" : "Inactive";
-          } else {
-            statusLabel = "Active"; 
-          }
+          const statusLabel = user.status
+            ? user.status.charAt(0).toUpperCase() + user.status.slice(1).toLowerCase()
+            : user.isActive !== undefined
+            ? user.isActive
+              ? "Active"
+              : "Inactive"
+            : "Active";
 
           let roleLabel = user.role || "User";
           if (user.email === "admin@email.com" || user.role === "super_admin") {
@@ -67,24 +68,24 @@ export default function AdminUsers({ setCurrentPage }) {
         setLoading(false);
       }
     };
-    fetchUsers();
-  }, []);
 
-  // ------------------------------
+    fetchUsers();
+  }, [API, token]);
+
   // Delete user
-  // ------------------------------
   const confirmDelete = async () => {
     if (!userToDelete) return;
     setIsDeleting(true);
 
     try {
-      const res = await fetch(`${API_URL}/api/admin/users/${userToDelete.id}`, {
+      const res = await fetch(`${API}/api/admin/users/${userToDelete.id}`, {
         method: "DELETE",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
 
       if (!res.ok) throw new Error("Failed to delete user");
 
-      setUsers(users.filter((u) => u.id !== userToDelete.id));
+      setUsers((prev) => prev.filter((u) => u.id !== userToDelete.id));
       setShowDeleteModal(false);
       setUserToDelete(null);
     } catch (err) {
@@ -95,14 +96,12 @@ export default function AdminUsers({ setCurrentPage }) {
     }
   };
 
-  // ------------------------------
-  // Click outside handlers
-  // ------------------------------
+  // Close dropdowns on outside click
   useEffect(() => {
-    function handleClickOutside(event) {
+    const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) setActiveActionId(null);
       if (filterRef.current && !filterRef.current.contains(event.target)) setShowFilterMenu(false);
-    }
+    };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
@@ -111,13 +110,9 @@ export default function AdminUsers({ setCurrentPage }) {
   const initiateDelete = (user) => { setUserToDelete(user); setShowDeleteModal(true); setActiveActionId(null); };
   const cancelDelete = () => { setShowDeleteModal(false); setUserToDelete(null); };
 
-  // ------------------------------
-  // Filters
-  // ------------------------------
-  const filteredUsers = users.filter(user => {
-    const matchesSearch = 
-      user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredUsers = users.filter((user) => {
+    const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          user.email.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesRole = roleFilter === "All" || user.role === roleFilter;
     const matchesStatus = statusFilter === "All" || user.status === statusFilter;
     return matchesSearch && matchesRole && matchesStatus;
@@ -132,16 +127,13 @@ export default function AdminUsers({ setCurrentPage }) {
 
   const stats = [
     { label: "Total Users", value: users.length },
-    { label: "Active Users", value: users.filter(u => u.status === "Active").length },
-    { label: "Admins", value: users.filter(u => u.role === "Admin").length },
-    { label: "Inactive", value: users.filter(u => u.status === "Inactive").length },
+    { label: "Active Users", value: users.filter((u) => u.status === "Active").length },
+    { label: "Admins", value: users.filter((u) => u.role === "Admin").length },
+    { label: "Inactive", value: users.filter((u) => u.status === "Inactive").length },
   ];
 
   if (error) return <div className="error-message">{error}</div>;
 
-  // ------------------------------
-  // Render
-  // ------------------------------
   return (
     <div className="users-container">
       <div className="page-header">
@@ -151,7 +143,6 @@ export default function AdminUsers({ setCurrentPage }) {
         </div>
       </div>
 
-      {/* Stats */}
       <div className="stats-grid">
         {stats.map((stat, index) => (
           <div key={index} className="stat-card">
@@ -161,30 +152,25 @@ export default function AdminUsers({ setCurrentPage }) {
         ))}
       </div>
 
-      {/* Controls */}
       <div className="controls-bar">
         <div className="search-wrapper">
           <Search className="search-icon" />
-          <input 
-            type="text" 
-            placeholder="Search users by name or email..." 
+          <input
+            type="text"
+            placeholder="Search users by name or email..."
             className="search-input"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
-          {searchTerm && (
-            <button className="clear-search-btn" onClick={() => setSearchTerm("")}>
-              <X size={14} />
-            </button>
-          )}
+          {searchTerm && <button className="clear-search-btn" onClick={() => setSearchTerm("")}><X size={14} /></button>}
         </div>
 
         <div className="filter-wrapper" ref={filterRef}>
-          <button 
+          <button
             className={`filter-btn ${showFilterMenu || roleFilter !== "All" || statusFilter !== "All" ? 'active' : ''}`}
             onClick={() => setShowFilterMenu(!showFilterMenu)}
           >
-            <Filter size={18} /> Filters 
+            <Filter size={18} /> Filters
             {(roleFilter !== "All" || statusFilter !== "All") && <span className="filter-badge-count">!</span>}
           </button>
 
@@ -193,14 +179,8 @@ export default function AdminUsers({ setCurrentPage }) {
               <div className="filter-section">
                 <p className="filter-label">Role</p>
                 <div className="filter-options">
-                  {["All", "Admin", "User"].map(role => (
-                    <button 
-                      key={role}
-                      className={`filter-chip ${roleFilter === role ? 'selected' : ''}`}
-                      onClick={() => setRoleFilter(role)}
-                    >
-                      {role}
-                    </button>
+                  {["All", "Admin", "User"].map((role) => (
+                    <button key={role} className={`filter-chip ${roleFilter === role ? 'selected' : ''}`} onClick={() => setRoleFilter(role)}>{role}</button>
                   ))}
                 </div>
               </div>
@@ -208,14 +188,8 @@ export default function AdminUsers({ setCurrentPage }) {
               <div className="filter-section">
                 <p className="filter-label">Status</p>
                 <div className="filter-options">
-                  {["All", "Active", "Inactive"].map(status => (
-                    <button 
-                      key={status}
-                      className={`filter-chip ${statusFilter === status ? 'selected' : ''}`}
-                      onClick={() => setStatusFilter(status)}
-                    >
-                      {status}
-                    </button>
+                  {["All", "Active", "Inactive"].map((status) => (
+                    <button key={status} className={`filter-chip ${statusFilter === status ? 'selected' : ''}`} onClick={() => setStatusFilter(status)}>{status}</button>
                   ))}
                 </div>
               </div>
@@ -228,15 +202,13 @@ export default function AdminUsers({ setCurrentPage }) {
         </div>
       </div>
 
-      {/* Table */}
       <div className="table-container">
         <div className="table-header-title">
           <h2>
-            {searchTerm || roleFilter !== "All" || statusFilter !== "All" ? "Filtered Results" : "All Users"} 
-            ({filteredUsers.length})
+            {searchTerm || roleFilter !== "All" || statusFilter !== "All" ? "Filtered Results" : "All Users"} ({filteredUsers.length})
           </h2>
         </div>
-        
+
         {loading ? (
           <div className="loading-state">
             <Loader2 className="animate-spin" size={32} />
@@ -244,18 +216,18 @@ export default function AdminUsers({ setCurrentPage }) {
           </div>
         ) : filteredUsers.length === 0 ? (
           <div className="empty-state">
-             <p>No users found matching your criteria.</p>
-             <button className="btn-reset-link" onClick={resetFilters}>Clear filters</button>
+            <p>No users found matching your criteria.</p>
+            <button className="btn-reset-link" onClick={resetFilters}>Clear filters</button>
           </div>
         ) : (
-          <div style={{ overflowX: 'auto', minHeight: '400px' }}>
+          <div style={{ overflowX: "auto", minHeight: "400px" }}>
             <table className="users-table">
               <thead>
                 <tr>
                   <th>User</th>
                   <th>Role</th>
                   <th>Status</th>
-                  <th style={{ textAlign: 'right' }}>Actions</th>
+                  <th style={{ textAlign: "right" }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -270,20 +242,21 @@ export default function AdminUsers({ setCurrentPage }) {
                         </div>
                       </div>
                     </td>
-                    <td><span className={`badge role-${user.role.toLowerCase()}`}>{user.role}</span></td>
-                    <td><span className={`badge status-${user.status.toLowerCase()}`}>{user.status}</span></td>
-                    <td style={{ textAlign: 'right' }}>
+                    <td>
+                      <span className={`badge role-${user.role.toLowerCase()}`}>{user.role}</span>
+                    </td>
+                    <td>
+                      <span className={`badge status-${user.status.toLowerCase()}`}>{user.status}</span>
+                    </td>
+                    <td style={{ textAlign: "right" }}>
                       <div className="action-wrapper" ref={activeActionId === user.id ? dropdownRef : null}>
-                        <button 
-                          className={`action-btn ${activeActionId === user.id ? 'active' : ''}`} 
-                          onClick={() => toggleActionMenu(user.id)}
-                        >
+                        <button className={`action-btn ${activeActionId === user.id ? 'active' : ''}`} onClick={() => toggleActionMenu(user.id)}>
                           <MoreVertical size={18} />
                         </button>
 
                         {activeActionId === user.id && (
                           <div className="action-menu">
-                            <button onClick={() => window.location.href=`mailto:${user.email}`} className="menu-item">
+                            <button onClick={() => window.location.href = `mailto:${user.email}`} className="menu-item">
                               <Mail size={14} /> Send Email
                             </button>
                             <div className="menu-divider"></div>
@@ -302,7 +275,6 @@ export default function AdminUsers({ setCurrentPage }) {
         )}
       </div>
 
-      {/* Delete Modal */}
       {showDeleteModal && (
         <div className="modal-overlay">
           <div className="modal-content">
