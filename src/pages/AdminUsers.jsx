@@ -1,6 +1,6 @@
 import "./AdminUsers.css";
 import { useEffect, useState, useRef } from "react";
-import { MoreVertical, Search, Filter, Edit, Mail, Trash2, Loader2, X } from "lucide-react";
+import { MoreVertical, Search, Filter, Mail, Trash2, Loader2, X } from "lucide-react";
 
 export default function AdminUsers({ setCurrentPage }) {
   const [users, setUsers] = useState([]);
@@ -18,34 +18,28 @@ export default function AdminUsers({ setCurrentPage }) {
   const dropdownRef = useRef(null);
   const filterRef = useRef(null); 
 
+  const token = localStorage.getItem("token"); // Use token for admin auth
+
   useEffect(() => {
-    if (setCurrentPage) {
-      setCurrentPage("Users");
-    }
+    if (setCurrentPage) setCurrentPage("Users");
   }, [setCurrentPage]);
 
   useEffect(() => {
     const fetchUsers = async () => {
+      setLoading(true);
       try {
-        const res = await fetch("http://localhost:3000/api/admin/users");
+        const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/admin/users`, {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
         if (!res.ok) throw new Error("Failed to fetch users");
         const data = await res.json();
 
-        const formattedUsers = data.map((user) => {
-          
-          let statusLabel = "Inactive";
-          if (user.status) {
-             statusLabel = user.status.charAt(0).toUpperCase() + user.status.slice(1).toLowerCase();
-          } else if (user.isActive !== undefined) {
-             statusLabel = user.isActive ? "Active" : "Inactive";
-          } else {
-             statusLabel = "Active"; 
-          }
-
+        const formattedUsers = data.map(user => {
+          let statusLabel = user.status || (user.isActive ? "Active" : "Inactive") || "Active";
           let roleLabel = user.role || "User";
-          if (user.email === "admin@email.com" || user.role === "super_admin") {
-            roleLabel = "Admin";
-          }
+          if (user.email === "admin@email.com" || user.role === "super_admin") roleLabel = "Admin";
 
           return {
             id: user.id,
@@ -59,27 +53,31 @@ export default function AdminUsers({ setCurrentPage }) {
 
         setUsers(formattedUsers);
       } catch (err) {
-        console.error("Error fetching users:", err);
+        console.error(err);
         setError("Failed to load users. Please check your connection.");
       } finally {
         setLoading(false);
       }
     };
-    fetchUsers();
-  }, []);
+
+    if (token) fetchUsers();
+  }, [token]);
 
   const confirmDelete = async () => {
     if (!userToDelete) return;
     setIsDeleting(true);
 
     try {
-      const res = await fetch(`http://localhost:3000/api/admin/users/${userToDelete.id}`, {
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/admin/users/${userToDelete.id}`, {
         method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
       });
 
       if (!res.ok) throw new Error("Failed to delete user");
 
-      setUsers(users.filter((u) => u.id !== userToDelete.id));
+      setUsers(users.filter(u => u.id !== userToDelete.id));
       setShowDeleteModal(false);
       setUserToDelete(null);
     } catch (err) {
@@ -91,21 +89,15 @@ export default function AdminUsers({ setCurrentPage }) {
   };
 
   useEffect(() => {
-    function handleClickOutside(event) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setActiveActionId(null);
-      }
-      if (filterRef.current && !filterRef.current.contains(event.target)) {
-        setShowFilterMenu(false);
-      }
-    }
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) setActiveActionId(null);
+      if (filterRef.current && !filterRef.current.contains(event.target)) setShowFilterMenu(false);
+    };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const toggleActionMenu = (id) => {
-    setActiveActionId(activeActionId === id ? null : id);
-  };
+  const toggleActionMenu = (id) => setActiveActionId(activeActionId === id ? null : id);
 
   const initiateDelete = (user) => {
     setUserToDelete(user);
@@ -119,13 +111,10 @@ export default function AdminUsers({ setCurrentPage }) {
   };
 
   const filteredUsers = users.filter(user => {
-    const matchesSearch = 
-      user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase());
-
+    const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          user.email.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesRole = roleFilter === "All" || user.role === roleFilter;
     const matchesStatus = statusFilter === "All" || user.status === statusFilter;
-
     return matchesSearch && matchesRole && matchesStatus;
   });
 
@@ -155,8 +144,8 @@ export default function AdminUsers({ setCurrentPage }) {
       </div>
 
       <div className="stats-grid">
-        {stats.map((stat, index) => (
-          <div key={index} className="stat-card">
+        {stats.map((stat, i) => (
+          <div key={i} className="stat-card">
             <p className="stat-label">{stat.label}</p>
             <p className="stat-value">{stat.value}</p>
           </div>
@@ -167,17 +156,13 @@ export default function AdminUsers({ setCurrentPage }) {
         <div className="search-wrapper">
           <Search className="search-icon" />
           <input 
-            type="text" 
-            placeholder="Search users by name or email..." 
+            type="text"
+            placeholder="Search users by name or email..."
             className="search-input"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
-          {searchTerm && (
-            <button className="clear-search-btn" onClick={() => setSearchTerm("")}>
-              <X size={14} />
-            </button>
-          )}
+          {searchTerm && <button className="clear-search-btn" onClick={() => setSearchTerm("")}><X size={14} /></button>}
         </div>
 
         <div className="filter-wrapper" ref={filterRef}>
@@ -185,8 +170,7 @@ export default function AdminUsers({ setCurrentPage }) {
             className={`filter-btn ${showFilterMenu || roleFilter !== "All" || statusFilter !== "All" ? 'active' : ''}`}
             onClick={() => setShowFilterMenu(!showFilterMenu)}
           >
-            <Filter size={18} /> 
-            Filters 
+            <Filter size={18} /> Filters
             {(roleFilter !== "All" || statusFilter !== "All") && <span className="filter-badge-count">!</span>}
           </button>
 
@@ -195,33 +179,19 @@ export default function AdminUsers({ setCurrentPage }) {
               <div className="filter-section">
                 <p className="filter-label">Role</p>
                 <div className="filter-options">
-                  {["All", "Admin", "User"].map(role => (
-                    <button 
-                      key={role}
-                      className={`filter-chip ${roleFilter === role ? 'selected' : ''}`}
-                      onClick={() => setRoleFilter(role)}
-                    >
-                      {role}
-                    </button>
+                  {["All","Admin","User"].map(role => (
+                    <button key={role} className={`filter-chip ${roleFilter===role?'selected':''}`} onClick={()=>setRoleFilter(role)}>{role}</button>
                   ))}
                 </div>
               </div>
-
               <div className="filter-section">
                 <p className="filter-label">Status</p>
                 <div className="filter-options">
-                  {["All", "Active", "Inactive"].map(status => (
-                    <button 
-                      key={status}
-                      className={`filter-chip ${statusFilter === status ? 'selected' : ''}`}
-                      onClick={() => setStatusFilter(status)}
-                    >
-                      {status}
-                    </button>
+                  {["All","Active","Inactive"].map(status => (
+                    <button key={status} className={`filter-chip ${statusFilter===status?'selected':''}`} onClick={()=>setStatusFilter(status)}>{status}</button>
                   ))}
                 </div>
               </div>
-
               <div className="filter-actions">
                 <button className="btn-reset" onClick={resetFilters}>Reset All</button>
               </div>
@@ -232,35 +202,32 @@ export default function AdminUsers({ setCurrentPage }) {
 
       <div className="table-container">
         <div className="table-header-title">
-          <h2>
-            {searchTerm || roleFilter !== "All" || statusFilter !== "All" ? "Filtered Results" : "All Users"} 
-            ({filteredUsers.length})
-          </h2>
+          <h2>{searchTerm || roleFilter!=="All" || statusFilter!=="All" ? "Filtered Results" : "All Users"} ({filteredUsers.length})</h2>
         </div>
-        
+
         {loading ? (
           <div className="loading-state">
             <Loader2 className="animate-spin" size={32} />
             <p>Loading user data...</p>
           </div>
-        ) : filteredUsers.length === 0 ? (
+        ) : filteredUsers.length===0 ? (
           <div className="empty-state">
-             <p>No users found matching your criteria.</p>
-             <button className="btn-reset-link" onClick={resetFilters}>Clear filters</button>
+            <p>No users found matching your criteria.</p>
+            <button className="btn-reset-link" onClick={resetFilters}>Clear filters</button>
           </div>
         ) : (
-          <div style={{ overflowX: 'auto', minHeight: '400px' }}>
+          <div style={{ overflowX:'auto', minHeight:'400px' }}>
             <table className="users-table">
               <thead>
                 <tr>
                   <th>User</th>
                   <th>Role</th>
                   <th>Status</th>
-                  <th style={{ textAlign: 'right' }}>Actions</th>
+                  <th style={{textAlign:'right'}}>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredUsers.map((user) => (
+                {filteredUsers.map(user => (
                   <tr key={user.id}>
                     <td>
                       <div className="user-profile">
@@ -271,34 +238,18 @@ export default function AdminUsers({ setCurrentPage }) {
                         </div>
                       </div>
                     </td>
-                    <td>
-                      <span className={`badge role-${user.role.toLowerCase()}`}>
-                        {user.role}
-                      </span>
-                    </td>
-                    <td>
-                      <span className={`badge status-${user.status.toLowerCase()}`}>
-                        {user.status}
-                      </span>
-                    </td>
-                    <td style={{ textAlign: 'right' }}>
-                      <div className="action-wrapper" ref={activeActionId === user.id ? dropdownRef : null}>
-                        <button 
-                          className={`action-btn ${activeActionId === user.id ? 'active' : ''}`} 
-                          onClick={() => toggleActionMenu(user.id)}
-                        >
+                    <td><span className={`badge role-${user.role.toLowerCase()}`}>{user.role}</span></td>
+                    <td><span className={`badge status-${user.status.toLowerCase()}`}>{user.status}</span></td>
+                    <td style={{textAlign:'right'}}>
+                      <div className="action-wrapper" ref={activeActionId===user.id?dropdownRef:null}>
+                        <button className={`action-btn ${activeActionId===user.id?'active':''}`} onClick={()=>toggleActionMenu(user.id)}>
                           <MoreVertical size={18} />
                         </button>
-
-                        {activeActionId === user.id && (
+                        {activeActionId===user.id && (
                           <div className="action-menu">
-                            <button onClick={() => window.location.href=`mailto:${user.email}`} className="menu-item">
-                              <Mail size={14} /> Send Email
-                            </button>
+                            <button onClick={()=>window.location.href=`mailto:${user.email}`} className="menu-item"><Mail size={14} /> Send Email</button>
                             <div className="menu-divider"></div>
-                            <button onClick={() => initiateDelete(user)} className="menu-item delete">
-                              <Trash2 size={14} /> Delete User
-                            </button>
+                            <button onClick={()=>initiateDelete(user)} className="menu-item delete"><Trash2 size={14} /> Delete User</button>
                           </div>
                         )}
                       </div>
@@ -315,16 +266,10 @@ export default function AdminUsers({ setCurrentPage }) {
         <div className="modal-overlay">
           <div className="modal-content">
             <h3 className="modal-title">Are you sure?</h3>
-            <p className="modal-text">
-              This action cannot be undone. This will permanently delete <strong>{userToDelete?.name}</strong> and all associated data.
-            </p>
+            <p className="modal-text">This action cannot be undone. This will permanently delete <strong>{userToDelete?.name}</strong> and all associated data.</p>
             <div className="modal-actions">
-              <button className="btn-cancel" onClick={cancelDelete} disabled={isDeleting}>
-                Cancel
-              </button>
-              <button className="btn-delete" onClick={confirmDelete} disabled={isDeleting}>
-                {isDeleting ? "Deleting..." : "Delete User"}
-              </button>
+              <button className="btn-cancel" onClick={cancelDelete} disabled={isDeleting}>Cancel</button>
+              <button className="btn-delete" onClick={confirmDelete} disabled={isDeleting}>{isDeleting?"Deleting...":"Delete User"}</button>
             </div>
           </div>
         </div>

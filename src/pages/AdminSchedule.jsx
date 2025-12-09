@@ -10,10 +10,10 @@ const AdminSchedule = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [schedules, setSchedules] = useState([]);
   const [editingId, setEditingId] = useState(null);
-
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, id: null });
 
   const daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+  const token = localStorage.getItem("token");
 
   const [formData, setFormData] = useState({
     day: "Monday",
@@ -29,8 +29,10 @@ const AdminSchedule = () => {
 
   const fetchSchedules = async () => {
     try {
-      const res = await axios.get("http://localhost:3000/api/admin/schedules");
-      setSchedules(res.data);
+      const res = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/admin/schedules`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setSchedules(res.data || []);
     } catch (err) {
       console.error("Failed to fetch schedules:", err);
     }
@@ -60,21 +62,16 @@ const AdminSchedule = () => {
   };
 
   const handleCloseModal = () => setIsModalOpen(false);
-
-  const promptDelete = (id) => {
-    setDeleteModal({ isOpen: true, id });
-  };
-
-  const closeDeleteModal = () => {
-    setDeleteModal({ isOpen: false, id: null });
-  };
+  const promptDelete = (id) => setDeleteModal({ isOpen: true, id });
+  const closeDeleteModal = () => setDeleteModal({ isOpen: false, id: null });
 
   const confirmDelete = async () => {
     const id = deleteModal.id;
     if (!id) return;
-
     try {
-      await axios.delete(`http://localhost:3000/api/admin/schedules/${id}`);
+      await axios.delete(`${import.meta.env.VITE_BACKEND_URL}/api/admin/schedules/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       setSchedules(prev => prev.filter(s => s.id !== id));
       closeDeleteModal();
     } catch (err) {
@@ -94,9 +91,13 @@ const AdminSchedule = () => {
     const payload = { ...formData };
     try {
       if (editingId) {
-        await axios.put(`http://localhost:3000/api/admin/schedules/${editingId}`, payload);
+        await axios.put(`${import.meta.env.VITE_BACKEND_URL}/api/admin/schedules/${editingId}`, payload, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
       } else {
-        await axios.post("http://localhost:3000/api/admin/schedules", payload);
+        await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/admin/schedules`, payload, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
       }
       handleCloseModal();
       fetchSchedules(); 
@@ -156,7 +157,6 @@ const AdminSchedule = () => {
       </div>
 
       <h4 className="section-title">Weekly Overview</h4>
-      
       <div className="schedule-grid">
         {daysOfWeek.map(day => {
           const daySchedules = schedules.filter(s => s.day === day);
@@ -168,7 +168,6 @@ const AdminSchedule = () => {
                 <span className="day-name">{day}</span>
                 <span className="day-date">{displayDate}</span>
               </div>
-
               <div className="day-body">
                 {daySchedules.length > 0 ? daySchedules.map(item => (
                   <div key={item.id} className={`schedule-item ${getTypeClass(item.type)}`}>
@@ -273,7 +272,6 @@ const AdminSchedule = () => {
           </div>
         </div>
       )}
-
     </div>
   );
 };
