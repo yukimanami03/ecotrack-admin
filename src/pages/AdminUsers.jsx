@@ -3,6 +3,7 @@ import { useEffect, useState, useRef } from "react";
 import { MoreVertical, Search, Filter, Mail, Trash2, Loader2, X } from "lucide-react";
 
 export default function AdminUsers({ setCurrentPage }) {
+  // Use environment variable for backend URL
   const API = import.meta.env.VITE_API_URL || "http://localhost:3000";
   const token = localStorage.getItem("token") || "";
 
@@ -26,9 +27,10 @@ export default function AdminUsers({ setCurrentPage }) {
     if (setCurrentPage) setCurrentPage("Users");
   }, [setCurrentPage]);
 
-  // Fetch users
+  // Fetch users from backend
   useEffect(() => {
     const fetchUsers = async () => {
+      setLoading(true);
       try {
         const res = await fetch(`${API}/api/admin/users`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -36,6 +38,7 @@ export default function AdminUsers({ setCurrentPage }) {
         if (!res.ok) throw new Error("Failed to fetch users");
         const data = await res.json();
 
+        // Format users for frontend display
         const formattedUsers = data.map((user) => {
           const statusLabel = user.status
             ? user.status.charAt(0).toUpperCase() + user.status.slice(1).toLowerCase()
@@ -82,7 +85,6 @@ export default function AdminUsers({ setCurrentPage }) {
         method: "DELETE",
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
-
       if (!res.ok) throw new Error("Failed to delete user");
 
       setUsers((prev) => prev.filter((u) => u.id !== userToDelete.id));
