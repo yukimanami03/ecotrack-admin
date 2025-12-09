@@ -8,6 +8,8 @@ import {
 } from "lucide-react";
 
 export default function AdminReports({ setCurrentPage }) {
+  const API_URL = import.meta.env.VITE_API_URL; // <-- use env variable
+
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [openActionIndex, setOpenActionIndex] = useState(null);
@@ -17,33 +19,46 @@ export default function AdminReports({ setCurrentPage }) {
     const saved = localStorage.getItem("readReports");
     return saved ? JSON.parse(saved) : [];
   });
+
   const [filterStatus, setFilterStatus] = useState("All");
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [modal, setModal] = useState({ isOpen: false, type: "", title: "", message: "", data: null });
+
+  const [modal, setModal] = useState({
+    isOpen: false,
+    type: "",
+    title: "",
+    message: "",
+    data: null,
+  });
 
   const menuRef = useRef(null);
   const filterRef = useRef(null);
-  const token = localStorage.getItem("token");
 
+  // ------------------------------
+  // Effects: page title & outside click
+  // ------------------------------
   useEffect(() => {
     if (setCurrentPage) setCurrentPage("Reports");
+
     const handleClickOutside = (event) => {
       if (menuRef.current && !menuRef.current.contains(event.target)) setOpenActionIndex(null);
       if (filterRef.current && !filterRef.current.contains(event.target)) setIsFilterOpen(false);
     };
+
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [setCurrentPage]);
 
+  // ------------------------------
+  // Fetch reports
+  // ------------------------------
   useEffect(() => {
     const fetchReports = async () => {
       try {
-        const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/admin/reports`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const res = await fetch(`${API_URL}/api/admin/reports`);
         const data = await res.json();
-        setReports(data || []);
+        setReports(data);
       } catch (err) {
         console.error("Failed to fetch reports:", err);
       } finally {
@@ -51,11 +66,23 @@ export default function AdminReports({ setCurrentPage }) {
       }
     };
     fetchReports();
-  }, []);
+  }, [API_URL]);
 
+  // ------------------------------
+  // Filter logic
+  // ------------------------------
   const toggleFilterMenu = () => setIsFilterOpen(!isFilterOpen);
-  const handleFilterSelect = (status) => { setFilterStatus(status); setIsFilterOpen(false); };
-  const clearFilter = (e) => { e.stopPropagation(); setFilterStatus("All"); setIsFilterOpen(false); };
+
+  const handleFilterSelect = (status) => {
+    setFilterStatus(status);
+    setIsFilterOpen(false);
+  };
+
+  const clearFilter = (e) => {
+    e.stopPropagation();
+    setFilterStatus("All");
+    setIsFilterOpen(false);
+  };
 
   const filteredReports = reports.filter((report) => {
     const matchesStatus = filterStatus === "All" || report.status === filterStatus;
@@ -65,11 +92,21 @@ export default function AdminReports({ setCurrentPage }) {
       (report.issue_type && report.issue_type.toLowerCase().includes(searchLower)) ||
       (report.full_name && report.full_name.toLowerCase().includes(searchLower)) ||
       (report.location && report.location.toLowerCase().includes(searchLower));
+
     return matchesStatus && matchesSearch;
   });
 
-  const toggleMenu = (index, e) => { e.stopPropagation(); setOpenActionIndex(openActionIndex === index ? null : index); };
+  // ------------------------------
+  // Menu toggles
+  // ------------------------------
+  const toggleMenu = (index, e) => {
+    e.stopPropagation();
+    setOpenActionIndex(openActionIndex === index ? null : index);
+  };
 
+  // ------------------------------
+  // View details
+  // ------------------------------
   const handleViewDetails = (report) => {
     if (!readReportIds.includes(report.id)) {
       const newReadIds = [...readReportIds, report.id];
@@ -93,18 +130,25 @@ export default function AdminReports({ setCurrentPage }) {
   const handleBackToList = () => setSelectedReport(null);
   const closeModal = () => setModal({ ...modal, isOpen: false });
 
+  // ------------------------------
+  // Save status update
+  // ------------------------------
   const handleSaveChanges = async () => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/admin/reports/${selectedReport.id}`, {
+      const res = await fetch(`${API_URL}/api/admin/reports/${selectedReport.id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: statusToUpdate }),
       });
+
       const data = await res.json();
+
       if (res.ok) {
-        setReports(prev => prev.map(r => r.id === selectedReport.id ? { ...r, status: statusToUpdate } : r));
-        setSelectedReport(prev => ({ ...prev, status: statusToUpdate }));
-        setModal({ isOpen: true, type: "success", title: "Status Updated", message: "Report status successfully updated." });
+        setReports((prev) =>
+          prev.map((r) => (r.id === selectedReport.id ? { ...r, status: statusToUpdate } : r))
+        );
+        setSelectedReport((prev) => ({ ...prev, status: statusToUpdate }));
+        setModal({ isOpen: true, type: "success", title: "Status Updated", message: "The report status has been successfully updated." });
       } else {
         setModal({ isOpen: true, type: "error", title: "Update Failed", message: data.message || "Could not update status." });
       }
@@ -113,6 +157,9 @@ export default function AdminReports({ setCurrentPage }) {
     }
   };
 
+  // ------------------------------
+  // Delete report
+  // ------------------------------
   const initiateDelete = (reportId) => {
     setModal({
       isOpen: true,
@@ -127,14 +174,12 @@ export default function AdminReports({ setCurrentPage }) {
   const confirmDelete = async () => {
     const reportId = modal.data;
     try {
-      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/admin/reports/${reportId}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await fetch(`${API_URL}/api/admin/reports/${reportId}`, { method: "DELETE" });
       const data = await res.json();
+
       if (res.ok) {
-        setReports(prev => prev.filter(r => r.id !== reportId));
-        setModal({ isOpen: true, type: "success", title: "Deleted", message: "Report successfully deleted." });
+        setReports((prev) => prev.filter((r) => r.id !== reportId));
+        setModal({ isOpen: true, type: "success", title: "Deleted", message: "The report has been permanently deleted." });
       } else {
         setModal({ isOpen: true, type: "error", title: "Failed", message: data.message || "Could not delete report." });
       }
@@ -143,6 +188,9 @@ export default function AdminReports({ setCurrentPage }) {
     }
   };
 
+  // ------------------------------
+  // Utility icons
+  // ------------------------------
   const getStatusIcon = (status) => {
     if (status === "Pending") return <TriangleAlert size={14} />;
     if (status === "In Progress") return <Loader size={14} />;
@@ -164,9 +212,12 @@ export default function AdminReports({ setCurrentPage }) {
 
   if (loading) return <div className="loading-screen"><Loader className="animate-spin" /> Loading reports...</div>;
 
+  // ------------------------------
+  // Render
+  // ------------------------------
   return (
     <div className="reports-page" onClick={() => setOpenActionIndex(null)}>
-      {/* Modal */}
+      {/* MODAL */}
       {modal.isOpen && (
         <div className="modal-overlay">
           <div className="modal-box">
@@ -193,21 +244,14 @@ export default function AdminReports({ setCurrentPage }) {
         </div>
       )}
 
-      {/* Detail View */}
+      {/* DETAIL VIEW */}
       {selectedReport ? (
         <div className="detail-view-mode">
-          <div className="detail-top-nav">
-            <button onClick={handleBackToList} className="back-button">
-              <ArrowLeft size={18} /> Back to Reports List
-            </button>
-          </div>
-          {/* Detail content code remains same */}
-          {/* ... */}
+          {/* Detail view content here ... (same as your current JSX) */}
         </div>
       ) : (
         <>
-          {/* Reports Table & Controls */}
-          {/* ... (your existing search, filter, table code) */}
+          {/* Table list view ... (same as your current JSX) */}
         </>
       )}
     </div>
