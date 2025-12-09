@@ -14,6 +14,7 @@ const AdminSchedule = () => {
 
   const daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
   const token = localStorage.getItem("token");
+  const API_URL = import.meta.env.VITE_BACKEND_URL;
 
   const [formData, setFormData] = useState({
     day: "Monday",
@@ -29,7 +30,7 @@ const AdminSchedule = () => {
 
   const fetchSchedules = async () => {
     try {
-      const res = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/admin/schedules`, {
+      const res = await axios.get(`${API_URL}/api/admin/schedules`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setSchedules(res.data || []);
@@ -69,7 +70,7 @@ const AdminSchedule = () => {
     const id = deleteModal.id;
     if (!id) return;
     try {
-      await axios.delete(`${import.meta.env.VITE_BACKEND_URL}/api/admin/schedules/${id}`, {
+      await axios.delete(`${API_URL}/api/admin/schedules/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setSchedules(prev => prev.filter(s => s.id !== id));
@@ -91,11 +92,11 @@ const AdminSchedule = () => {
     const payload = { ...formData };
     try {
       if (editingId) {
-        await axios.put(`${import.meta.env.VITE_BACKEND_URL}/api/admin/schedules/${editingId}`, payload, {
+        await axios.put(`${API_URL}/api/admin/schedules/${editingId}`, payload, {
           headers: { Authorization: `Bearer ${token}` },
         });
       } else {
-        await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/admin/schedules`, payload, {
+        await axios.post(`${API_URL}/api/admin/schedules`, payload, {
           headers: { Authorization: `Bearer ${token}` },
         });
       }

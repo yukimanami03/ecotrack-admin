@@ -18,7 +18,8 @@ export default function AdminUsers({ setCurrentPage }) {
   const dropdownRef = useRef(null);
   const filterRef = useRef(null); 
 
-  const token = localStorage.getItem("token"); // Use token for admin auth
+  const token = localStorage.getItem("token");
+  const API_URL = import.meta.env.VITE_BACKEND_URL;
 
   useEffect(() => {
     if (setCurrentPage) setCurrentPage("Users");
@@ -28,10 +29,8 @@ export default function AdminUsers({ setCurrentPage }) {
     const fetchUsers = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/admin/users`, {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
+        const res = await fetch(`${API_URL}/api/admin/users`, {
+          headers: { Authorization: `Bearer ${token}` }
         });
         if (!res.ok) throw new Error("Failed to fetch users");
         const data = await res.json();
@@ -61,22 +60,17 @@ export default function AdminUsers({ setCurrentPage }) {
     };
 
     if (token) fetchUsers();
-  }, [token]);
+  }, [token, API_URL]);
 
   const confirmDelete = async () => {
     if (!userToDelete) return;
     setIsDeleting(true);
-
     try {
-      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/admin/users/${userToDelete.id}`, {
+      const res = await fetch(`${API_URL}/api/admin/users/${userToDelete.id}`, {
         method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
+        headers: { Authorization: `Bearer ${token}` }
       });
-
       if (!res.ok) throw new Error("Failed to delete user");
-
       setUsers(users.filter(u => u.id !== userToDelete.id));
       setShowDeleteModal(false);
       setUserToDelete(null);
@@ -98,17 +92,8 @@ export default function AdminUsers({ setCurrentPage }) {
   }, []);
 
   const toggleActionMenu = (id) => setActiveActionId(activeActionId === id ? null : id);
-
-  const initiateDelete = (user) => {
-    setUserToDelete(user);
-    setShowDeleteModal(true);
-    setActiveActionId(null);
-  };
-
-  const cancelDelete = () => {
-    setShowDeleteModal(false);
-    setUserToDelete(null);
-  };
+  const initiateDelete = (user) => { setUserToDelete(user); setShowDeleteModal(true); setActiveActionId(null); };
+  const cancelDelete = () => { setShowDeleteModal(false); setUserToDelete(null); };
 
   const filteredUsers = users.filter(user => {
     const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -118,12 +103,7 @@ export default function AdminUsers({ setCurrentPage }) {
     return matchesSearch && matchesRole && matchesStatus;
   });
 
-  const resetFilters = () => {
-    setRoleFilter("All");
-    setStatusFilter("All");
-    setSearchTerm("");
-    setShowFilterMenu(false);
-  };
+  const resetFilters = () => { setRoleFilter("All"); setStatusFilter("All"); setSearchTerm(""); setShowFilterMenu(false); };
 
   const stats = [
     { label: "Total Users", value: users.length },
