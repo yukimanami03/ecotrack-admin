@@ -33,15 +33,12 @@ export default function AdminDashboard({ setCurrentPage }) {
   const navigate = useNavigate();
   const [stats, setStats] = useState([]);
   const [incidentReports, setIncidentReports] = useState([]);
-  const [activeIndex, setActiveIndex] = useState(null);
-  const [hoveredSlice, setHoveredSlice] = useState(null);
 
   const API = import.meta.env.VITE_API_URL || "https://ecotrack-backend-n5pv.onrender.com";
 
   useEffect(() => {
     if (setCurrentPage) setCurrentPage("Dashboard");
     fetchDashboardData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setCurrentPage]);
 
   const getIssueStyle = (type) => {
@@ -85,31 +82,6 @@ export default function AdminDashboard({ setCurrentPage }) {
     }
   };
 
-  const chartData = [
-    { day: "Mon", collected: 400, recycled: 240, x: 0,   yCol: 180, yRec: 228 },
-    { day: "Tue", collected: 290, recycled: 140, x: 83,  yCol: 213, yRec: 258 }, 
-    { day: "Wed", collected: 200, recycled: 980, x: 166, yCol: 240, yRec: 6 },   
-    { day: "Thu", collected: 275, recycled: 390, x: 250, yCol: 217, yRec: 183 }, 
-    { day: "Fri", collected: 190, recycled: 480, x: 333, yCol: 243, yRec: 156 }, 
-    { day: "Sat", collected: 240, recycled: 380, x: 416, yCol: 228, yRec: 186 },
-    { day: "Sun", collected: 350, recycled: 430, x: 500, yCol: 195, yRec: 171 },
-  ];
-  const pieData = [
-    { name: "Plastic", value: 30, color: "#3b82f6" }, 
-    { name: "Paper",   value: 20, color: "#f59e0b" }, 
-    { name: "Organic", value: 25, color: "#22c55e" }, 
-    { name: "Metal",   value: 15, color: "#64748b" }, 
-    { name: "Glass",   value: 10, color: "#a855f7" }, 
-  ];
-  const radius = 70; 
-  const strokeWidth = 40; 
-  const circumference = 2 * Math.PI * radius; 
-  let accumulatedPercent = 0;
-
-  const activeData = activeIndex !== null ? chartData[activeIndex] : null;
-  const bluePathD = "M0,228 C41,228 41,258 83,258 S125,6 166,6 S208,183 250,183 S291,156 333,156 S375,186 416,186 S458,171 500,171";
-  const greenPathD = "M0,180 C41,180 41,213 83,213 S125,240 166,240 S208,217 250,217 S291,243 333,243 S375,228 416,228 S458,195 500,195";
-
   const getStatusClass = (status) => {
     switch(status) {
       case "Pending": return "status-badge-pending";
@@ -124,19 +96,15 @@ export default function AdminDashboard({ setCurrentPage }) {
     navigate("/reports");
   };
 
-  const getIssueStyleSafe = (type) => getIssueStyle(type);
-
   return (
     <div className="dashboard-container">
-      {/* ===== Dashboard Header ===== */}
       <div className="admin-dashboard-header">
         <h2 className="admin-dashboard-title">Dashboard</h2>
         <p className="admin-dashboard-subtitle">
-          Welcome back! Here's your environmental tracking overview for Barangay Bulatok, Pagadian City.
+          Welcome back! Here's your environmental tracking overview.
         </p>
       </div>
 
-      {/* ===== Stats Grid ===== */}
       <div className="stats-grid">
         {stats.map((stat, idx) => (
           <div key={idx} className="stat-card">
@@ -157,92 +125,6 @@ export default function AdminDashboard({ setCurrentPage }) {
         ))}
       </div>
 
-      {/* ===== Charts Grid ===== */}
-      <div className="charts-grid">
-        {/* Collection Trends Chart */}
-        <div className="chart-card trends-chart">
-          <div className="chart-header">
-            <h3>Collection Trends</h3>
-            <select className="chart-filter">
-              <option>This Week</option>
-              <option>Last Week</option>
-            </select>
-          </div>
-          <div className="chart-layout">
-            <div className="y-axis-labels">
-              <span>1000</span><span>750</span><span>500</span><span>250</span><span>0</span>
-            </div>
-            <div className="chart-body" onMouseLeave={() => setActiveIndex(null)}>
-              {activeData && (
-                <div className="chart-tooltip-box" style={{ left: `${Math.min(Math.max(activeData.x / 5, 10), 90)}%` }}>
-                  <p className="tooltip-title">{activeData.day}</p>
-                  <div className="tooltip-row">
-                    <div className="row-label"><span className="dot green"></span><span>collected :</span></div>
-                    <span className="text-green-bold">{activeData.collected}</span>
-                  </div>
-                  <div className="tooltip-row">
-                    <div className="row-label"><span className="dot blue"></span><span>recycled :</span></div>
-                    <span className="text-blue-bold">{activeData.recycled}</span>
-                  </div>
-                </div>
-              )}
-              <svg viewBox="0 0 500 315" className="line-chart-svg" preserveAspectRatio="none">
-                <defs>
-                   <linearGradient id="blueGradient" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor="#3b82f6" stopOpacity="0.2" /><stop offset="100%" stopColor="#3b82f6" stopOpacity="0" /></linearGradient>
-                   <linearGradient id="greenGradient" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor="#22c55e" stopOpacity="0.1" /><stop offset="100%" stopColor="#22c55e" stopOpacity="0" /></linearGradient>
-                </defs>
-                <line x1="0" y1="0" x2="500" y2="0" stroke="#f3f4f6" strokeDasharray="4"/>
-                <line x1="0" y1="75" x2="500" y2="75" stroke="#f3f4f6" strokeDasharray="4"/>
-                <line x1="0" y1="150" x2="500" y2="150" stroke="#f3f4f6" strokeDasharray="4"/>
-                <line x1="0" y1="225" x2="500" y2="225" stroke="#f3f4f6" strokeDasharray="4"/>
-                <line x1="0" y1="300" x2="500" y2="300" stroke="#f3f4f6" opacity="1"/>
-                <path d={`${bluePathD} V 300 H 0 Z`} fill="url(#blueGradient)" />
-                <path d={bluePathD} fill="none" stroke="#3b82f6" strokeWidth="2.5" />
-                <path d={`${greenPathD} V 300 H 0 Z`} fill="url(#greenGradient)" />
-                <path d={greenPathD} fill="none" stroke="#22c55e" strokeWidth="2.5" />
-                 {activeData && (
-                   <>
-                      <line x1={activeData.x} y1="0" x2={activeData.x} y2="300" stroke="#e5e7eb" strokeWidth="2" strokeDasharray="4" />
-                      <circle cx={activeData.x} cy={activeData.yCol} r="4" fill="white" stroke="#22c55e" strokeWidth="2" />
-                      <circle cx={activeData.x} cy={activeData.yRec} r="4" fill="white" stroke="#3b82f6" strokeWidth="2" />
-                   </>
-                 )}
-                 {chartData.map((data, index) => (
-                   <rect key={index} x={index === 0 ? 0 : data.x - 41} y="0" width="83" height="330" fill="transparent" onMouseEnter={() => setActiveIndex(index)} style={{ cursor: 'pointer' }}/>
-                 ))}
-                {chartData.map((d, i) => (
-                  <text key={i} x={d.x} y="315" textAnchor={i === 0 ? "start" : i === 6 ? "end" : "middle"} fill={activeIndex === i ? "#111827" : "#9ca3af"} fontSize="12" fontWeight={activeIndex === i ? "600" : "400"} style={{ transition: "all 0.2s ease", userSelect: "none" }}>{d.day}</text>
-                ))}
-              </svg>
-            </div>
-          </div>
-        </div>
-
-        {/* Waste Composition Pie Chart */}
-        <div className="chart-card composition-chart">
-          <h3>Waste Composition</h3>
-          <svg width={2*(radius+strokeWidth)} height={2*(radius+strokeWidth)}>
-            <g transform={`translate(${radius+strokeWidth}, ${radius+strokeWidth})`}>
-              {pieData.map((slice, i) => {
-                const slicePercent = slice.value / 100;
-                const startPercent = accumulatedPercent;
-                accumulatedPercent += slicePercent;
-                const startAngle = startPercent * 2 * Math.PI - Math.PI/2;
-                const endAngle = accumulatedPercent * 2 * Math.PI - Math.PI/2;
-                const x1 = radius * Math.cos(startAngle);
-                const y1 = radius * Math.sin(startAngle);
-                const x2 = radius * Math.cos(endAngle);
-                const y2 = radius * Math.sin(endAngle);
-                const largeArcFlag = slicePercent > 0.5 ? 1 : 0;
-                return (
-                  <path key={i} d={`M0,0 L${x1},${y1} A${radius},${radius} 0 ${largeArcFlag} 1 ${x2},${y2} Z`} fill={slice.color}/>
-                );
-              })}
-            </g>
-          </svg>
-        </div>
-      </div>
-
       {/* ===== Latest Incident Reports ===== */}
       <div className="latest-reports-card">
         <div className="latest-reports-header">
@@ -259,9 +141,9 @@ export default function AdminDashboard({ setCurrentPage }) {
           </thead>
           <tbody>
             {incidentReports.map((report) => {
-              const { icon, styleClass } = getIssueStyleSafe(report.type);
+              const { icon, styleClass } = getIssueStyle(report.type);
               return (
-                <tr key={report._id}>
+                <tr key={report._id} style={{ cursor: "pointer" }}>
                   <td>{report._id.slice(-6)}</td>
                   <td className={`report-type ${styleClass}`}>{icon} {report.type}</td>
                   <td className={getStatusClass(report.status)}>
