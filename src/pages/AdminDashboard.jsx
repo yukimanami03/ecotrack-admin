@@ -18,48 +18,36 @@ export default function AdminDashboard({ setCurrentPage }) {
   }, []);
 
   const getIssueStyle = (type) => {
-    const safeType = type || "Other Issue";
-    if (safeType.includes("Missed")) return { icon: <CalendarClock size={20} />, styleClass: "blue" };
-    if (safeType.includes("Illegal")) return { icon: <TriangleAlert size={20} />, styleClass: "red" };
-    if (safeType.includes("Overflowing")) return { icon: <Trash2 size={20} />, styleClass: "gray" };
-    if (safeType.includes("Damaged")) return { icon: <Wrench size={20} />, styleClass: "orange" };
-    if (safeType.includes("Hazardous")) return { icon: <Skull size={20} />, styleClass: "red" };
-    if (safeType.includes("Bulk")) return { icon: <Truck size={20} />, styleClass: "green" };
+    if (!type) type = "Other Issue";
+    if (type.includes("Missed")) return { icon: <CalendarClock size={20} />, styleClass: "blue" };
+    if (type.includes("Illegal")) return { icon: <TriangleAlert size={20} />, styleClass: "red" };
+    if (type.includes("Overflowing")) return { icon: <Trash2 size={20} />, styleClass: "gray" };
+    if (type.includes("Damaged")) return { icon: <Wrench size={20} />, styleClass: "orange" };
+    if (type.includes("Hazardous")) return { icon: <Skull size={20} />, styleClass: "red" };
+    if (type.includes("Bulk")) return { icon: <Truck size={20} />, styleClass: "green" };
     return { icon: <HelpCircle size={20} />, styleClass: "gray" };
   };
 
-  const getStatusClass = (status) => {
-    if (!status) return "";
-    return status.toLowerCase().replace(" ", "-");
-  };
+  const getStatusClass = (status) => status ? status.toLowerCase().replace(" ", "-") : "";
 
   const fetchDashboardData = async () => {
     setLoading(true);
     setError("");
     try {
-      const token = localStorage.getItem("token");
-      if (!token) throw new Error("No token found. Please login.");
-
       // Fetch Reports
-      const reportsRes = await fetch(`${API}/api/admin/reports`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const reportsRes = await fetch(`${API}/api/admin/reports`);
       if (!reportsRes.ok) throw new Error("Failed to fetch reports");
       const reports = await reportsRes.json();
       setIncidentReports(Array.isArray(reports) ? reports.slice(0, 5) : []);
 
-      // Count pending reports
       const pendingReviews = Array.isArray(reports) ? reports.filter(r => r.status === "Pending").length : 0;
 
       // Fetch Users
-      const usersRes = await fetch(`${API}/api/admin/users`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const usersRes = await fetch(`${API}/api/admin/users`);
       if (!usersRes.ok) throw new Error("Failed to fetch users");
       const users = await usersRes.json();
       const activeUsers = Array.isArray(users) ? users.length : 0;
 
-      // Set dashboard stats
       setStats([
         { label: "Active Users", value: activeUsers, change: "+8.2%", isPositive: true },
         { label: "Pending Reviews", value: pendingReviews, change: pendingReviews > 0 ? "-5.1%" : "0%", isPositive: pendingReviews === 0 },
