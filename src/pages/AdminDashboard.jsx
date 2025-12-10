@@ -10,12 +10,11 @@ export default function AdminDashboard({ setCurrentPage }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const API = import.meta.env.VITE_API_URL || "https://ecotrack-backend-n5pv.onrender.com";
+  const API = "https://ecotrack-backend-n5pv.onrender.com"; // Render backend
 
   useEffect(() => {
     if (setCurrentPage) setCurrentPage("Dashboard");
     fetchDashboardData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const getIssueStyle = (type) => {
@@ -29,12 +28,17 @@ export default function AdminDashboard({ setCurrentPage }) {
     return { icon: <HelpCircle size={20} />, styleClass: "gray" };
   };
 
+  const getStatusClass = (status) => {
+    if (!status) return "";
+    return status.toLowerCase().replace(" ", "-");
+  };
+
   const fetchDashboardData = async () => {
     setLoading(true);
     setError("");
     try {
-      const token = localStorage.getItem("token") || "";
-      if (!token) throw new Error("No token found, please login.");
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("No token found. Please login.");
 
       // Fetch Reports
       const reportsRes = await fetch(`${API}/api/admin/reports`, {
@@ -42,23 +46,10 @@ export default function AdminDashboard({ setCurrentPage }) {
       });
       if (!reportsRes.ok) throw new Error("Failed to fetch reports");
       const reports = await reportsRes.json();
-      // normalize files (replace localhost urls if any)
-      const normalized = (Array.isArray(reports) ? reports : []).map(r => ({
-        ...r,
-        files: Array.isArray(r.files) ? r.files.map((url) => {
-          try {
-            const u = new URL(url);
-            if (u.hostname === "localhost" || u.hostname === "127.0.0.1") {
-              return `${API}/uploads/${u.pathname.split("/").pop()}`;
-            }
-            return url;
-          } catch {
-            return url.startsWith("/") ? `${API}${url}` : url;
-          }
-        }) : []
-      }));
-      setIncidentReports(normalized.slice(0, 5));
-      const pendingReviews = normalized.filter(r => r.status === "Pending").length;
+      setIncidentReports(Array.isArray(reports) ? reports.slice(0, 5) : []);
+
+      // Count pending reports
+      const pendingReviews = Array.isArray(reports) ? reports.filter(r => r.status === "Pending").length : 0;
 
       // Fetch Users
       const usersRes = await fetch(`${API}/api/admin/users`, {
@@ -68,49 +59,35 @@ export default function AdminDashboard({ setCurrentPage }) {
       const users = await usersRes.json();
       const activeUsers = Array.isArray(users) ? users.length : 0;
 
+      // Set dashboard stats
       setStats([
-        { label: "Total Waste Collected", value: "2,405 tons", change: "+12.5%", isPositive: true, icon: <Trash2 />, colorClass: "bg-green-100" },
-        { label: "Recycling Rate", value: "68%", change: "+8.2%", isPositive: true, icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.77 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/></svg>, colorClass: "bg-blue-100" },
-        { label: "Active Users", value: activeUsers, change: "+8.2%", isPositive: true, icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>, colorClass: "bg-orange-100" },
-        { label: "Pending Reviews", value: pendingReviews, change: pendingReviews > 0 ? "-5.1%" : "0%", isPositive: pendingReviews === 0, icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>, colorClass: "bg-orange-100" },
+        { label: "Active Users", value: activeUsers, change: "+8.2%", isPositive: true },
+        { label: "Pending Reviews", value: pendingReviews, change: pendingReviews > 0 ? "-5.1%" : "0%", isPositive: pendingReviews === 0 },
+        { label: "Total Reports", value: Array.isArray(reports) ? reports.length : 0, change: "+12.5%", isPositive: true },
       ]);
     } catch (err) {
-      console.error("Error fetching dashboard data:", err);
-      setError(err.message || "Failed to load dashboard.");
+      console.error(err);
+      setError(err.message || "Failed to load dashboard data.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleViewAllClick = () => {
-    // prefer router navigation only
-    navigate("/reports");
-  };
+  const handleViewAllClick = () => navigate("/reports");
 
   if (loading) return <div className="loading-state">Loading dashboard...</div>;
   if (error) return <div className="error-message">{error}</div>;
 
   return (
     <div className="dashboard-container">
-      <div className="admin-dashboard-header">
-        <h2 className="admin-dashboard-title">Dashboard</h2>
-        <p className="admin-dashboard-subtitle">Welcome back! Here's your environmental tracking overview.</p>
-      </div>
+      <h2>Dashboard</h2>
 
       <div className="stats-grid">
         {stats.map((stat, idx) => (
           <div key={idx} className="stat-card">
-            <div className="stat-header">
-              <div>
-                <p className="stat-label">{stat.label}</p>
-                <p className="stat-value">{stat.value}</p>
-              </div>
-              <div className={`stat-icon-box ${stat.colorClass}`}>{stat.icon}</div>
-            </div>
-            <p className={`stat-change ${stat.isPositive ? "positive" : "negative"}`}>
-              <span>{stat.isPositive ? "↗" : "↘"}</span>
-              {stat.change} <span className="text-muted">vs last month</span>
-            </p>
+            <p className="stat-label">{stat.label}</p>
+            <p className="stat-value">{stat.value}</p>
+            <p className={`stat-change ${stat.isPositive ? "positive" : "negative"}`}>{stat.change}</p>
           </div>
         ))}
       </div>
@@ -118,25 +95,30 @@ export default function AdminDashboard({ setCurrentPage }) {
       <div className="latest-reports-card">
         <div className="latest-reports-header">
           <h3>Latest Incident Reports</h3>
-          <button className="view-all-btn" onClick={handleViewAllClick}>View All</button>
+          <button onClick={handleViewAllClick}>View All</button>
         </div>
 
         <table className="reports-table">
           <thead>
-            <tr><th>ID</th><th>Type</th><th>Status</th></tr>
+            <tr>
+              <th>ID</th>
+              <th>Type</th>
+              <th>Status</th>
+            </tr>
           </thead>
           <tbody>
-            {incidentReports.map((report) => {
-              const { icon } = getIssueStyle(report.issue_type || report.type || "");
+            {incidentReports.length > 0 ? incidentReports.map((report) => {
+              const { icon } = getIssueStyle(report.issue_type || "");
               return (
-                <tr key={report.id} style={{ cursor: "pointer" }}>
-                  <td>{String(report.id).slice(-6)}</td>
-                  <td className={`report-type`}>{icon} {report.issue_type || report.type}</td>
+                <tr key={report.id}>
+                  <td>{report.id}</td>
+                  <td>{icon} {report.issue_type}</td>
                   <td className={getStatusClass(report.status)}>{report.status}</td>
                 </tr>
               );
-            })}
-            {incidentReports.length === 0 && <tr><td colSpan="3">No recent reports</td></tr>}
+            }) : (
+              <tr><td colSpan="3">No recent reports</td></tr>
+            )}
           </tbody>
         </table>
       </div>
